@@ -17,30 +17,35 @@ print("Welcome to GhidrOM string constructor")
 decompiler = DecompInterface()
 decompiler.openProgram(currentProgram())
 currFn = getFunctionContaining(currentAddress())
-decomp_rs = decompiler.decompileFunction(currFn, 0, ConsoleTaskMonitor())
+decomp_rs = decompiler.decompileFunction(currFn, 0, ConsoleTaskMonitor()) # DecompiledResults
 
+tokgroups = decomp_rs.getCCodeMarkup()
 target = "std::__cxx11::basic_string"
-code = PrettyPrinter(currFn, decomp_rs.getCCodeMarkup(), None).print().getC()
+code = ""
+# code = PrettyPrinter(currFn, decomp_rs.getCCodeMarkup(), None).print().getC()
 instructions = ""
 """
 The PrettyPrinter javadoc is outdated. Looked up the src to find the required third param
 PrettyPrinter(fn: Function, tokgroup: ClangTokenGroup, transformer: NameTransformer)
 """
-for idx, x in enumerate(decomp_rs.getCCodeMarkup()):
-	"""
-	TODO: understand the structure of decomp_rs.getCCodeMarkup()
-	"""
-	# code += PrettyPrinter(currFn, ClangTokenGroup(x), None).print().getC()
-	itr =  AddressSet(x.getMinAddress(), x.getMaxAddress()).iterator()
-	instructions += f"Token Group {idx}:\n"
-	while itr.hasNext(): # loop through address ranges
-		itr1 = itr.next().iterator() # loop through addresses
-		while itr1.hasNext():
-			instr = currentProgram().getListing().getInstructionAt(itr1.next())
-			if instr:
-				instructions += str(instr)
-				instructions += "\n"
-	instructions += "\n"
+
+for i in tokgroups.numChildren():
+	x = tokgroups.Child(i)
+	for j in x.numChildren():
+		y = x.Child(j)
+		for k in y.numChildren():
+			statement_node = y.Child(k)
+			statement = str(statement_node)
+			code += statement + "\n"
+			if not target in str(statement):
+				continue
+
+			instructions += "Got instructions for target" + "\n"
+			addr = y.getMinAddress()
+			while addr <= y.getMaxAddress():
+				instr = getInstructionAt(addr)
+				instructions += str(instr) + "\n"
+				instr = instr.next()
 
 """
 Swing logic to make the window
